@@ -1,15 +1,13 @@
-import pandas as pd
-from collections import defaultdict
+from collections import defaultdict, Counter
 from matching import *
-from metrics import *
 
 
 def template(*info):
-    return '{:35}{:15}{:10}{:35}'.format(*map(lambda x: str(x)[:34], info))
+    return '{:50}{:15}{:50}'.format(*map(lambda x: str(x)[:49], info))
 
 
 def print_results(queries, options, match_func=FUZZY, query_identities={}, option_identities={}, total_limit=5, use_limit=None,
-                  threshold=80, show_extra=2, method_name=None):
+                  threshold=80, show_extra=2, path_output=None):
     avg_recall = 0
     avg_prec = 0
     
@@ -18,33 +16,22 @@ def print_results(queries, options, match_func=FUZZY, query_identities={}, optio
     avg_prec_size_weight = 0
     total_output = 0
     
-    
-    # preproc
-    classes = defaultdict(set)
-    for k, v in options.items():
-        classes[v].add(k)
-    
-    # for recall and R-prec
-    N_true = [0] * (len(queries) + 1)
-    for v in options.values():
-        N_true[v] += 1
-    
-    key_order = ['option', 'score', 'isTrue', 'identity']
+    key_order = ['option', 'score', 'identity']
     n = len(options)
     
-    print(template(*key_order))
-    print('=' * 70)
+    ouf = open(path_output, 'w', encoding='utf-8') if path_output else None
+    print(template(*key_order), file=ouf)
+    print('=' * 70, file=ouf)
     
     for i, q in enumerate(queries):
         query_label = i + 1
-        required = classes[query_label].copy()
         q_id = query_identities.get(q, q)
         curr_limit = 1 if use_limit is None else use_limit
         while True:
             ctr_found = 0
             results = []
             res = {}
-            for opt, label in options.items():
+            for opt in options:
                 opt_id = option_identities.get(opt, opt)
                 frac = len(opt_id) // total_limit * curr_limit
                 opt_id = opt_id[:frac]
@@ -53,7 +40,6 @@ def print_results(queries, options, match_func=FUZZY, query_identities={}, optio
                     ctr_found += 1
                 res['option'] = opt
                 res['score'] = score
-                res['isTrue'] = int(label == query_label)
                 res['identity'] = best_opt_id
                 results.append(res.copy())
             if ctr_found >= 10 or use_limit or curr_limit >= total_limit:
@@ -63,93 +49,48 @@ def print_results(queries, options, match_func=FUZZY, query_identities={}, optio
 
         results.sort(key=lambda x: x['score'], reverse=True)
         
-        R = N_true[query_label]
-        recall, output_size = recall_score(results, options, query_label, R, threshold=threshold)
-        prec = precision_score(results[:output_size], options, query_label)
-#         Rprec = R_precision_score(results, options, query_label, R)        
-#         roc = roc_score(results, options, query_label=query_label)
-        print(template(f'{q} (query)', '-', '-', q_id))
+        print(template(f'{q} (query)', '-', q_id), file=ouf)
     
-        print('-' * 70)
-        print('   Output')
-        print('-' * 70)
-        for i in range(output_size + show_extra):
+        print('-' * 70, file=ouf)
+        print('   Output', file=ouf)
+        print('-' * 70, file=ouf)
+        for i in range(ctr_found + show_extra):
             res = results[i]
-            if i < output_size:
-                required.discard(res['option'])
-            elif i == output_size:
-                print('-' * 70)
-            print(template(*(res[key] for key in key_order)))
+            if i == ctr_found:
+                print('-' * 70, file=ouf)
+            print(template(*(res[key] for key in key_order)), file=ouf)
             
-        print('-' * 70)
-        print('   Missed')
-        print('-' * 70)
-        for res in results:
-            opt = res['option']
-            if opt in required:
-                print(template(*(res[key] for key in key_order)))              
-        
-        print('-' * 70)
-        print(f'Search limit: {curr_limit}/{total_limit}')        
-        print(f'Recall (t={threshold}, size={output_size}): {recall:.4f}')
-        print(f'Precision: {prec:.4f}')
-#         print(f'R-precision: {Rprec:.4f}')
-#         print(f'ROC AUC: {roc:.4f}')
-        print('=' * 70)
+        print('=' * 70, file=ouf)
     
-        avg_recall += recall 
-        avg_prec += prec
-        avg_recall_size_weight += recall * R
-        total_relevant += R
-        avg_prec_size_weight += prec * output_size
-        total_output += output_size
-        
-        if method_name:
-            Results.update(method_name, q, 'Recall', recall)
-            Results.update(method_name, q, 'Precision', prec)
-#             Results.update(method_name, q, 'Rprec', Rprec)
-#             Results.update(method_name, q, 'ROC', roc)
+    if ouf:
+        ouf.close()
     
-    avg_recall /= len(queries)
-    avg_prec /= len(queries)
-    avg_recall_size_weight /= total_relevant
-    avg_prec_size_weight /= total_output
-    
-    print(f'Recall (queries are equal): {avg_recall:.4f}')
-    print(f'Precision (queries are equal): {avg_prec:.4f}')
-    print(f'Recall (weight = amount of relevant): {avg_recall_size_weight:.4f}')
-    print(f'Precision (weight = size of output): {avg_prec_size_weight:.4f}')
-    return avg_recall, avg_prec, avg_recall_size_weight, avg_prec_size_weight
-        
 
 
-class Results:
-    table = pd.DataFrame()
-    table.index.name = 'method'
-
-    @classmethod
-    def update(cls, method, query, metric, score):
-        cls.table.at[method, f'{metric}_{query}'] = score
-    
-    @classmethod
-    def show(cls):
-        display(cls.table)
-
-
-def reorder_identities(option_identities, limit=5):
+def reorder_identities(option_identities, limit=5, extended=False, check=False):
     '''
-    identities sorted by the position in GKGS results
-    case: extended=True
+    identities sorted by the position in GKGS responses
     '''
     option_ids_reordered = {}
+    id_per_result = 1 if not extended else 2
+    id_per_query = id_per_result * limit
     for key, identities in option_identities.items():
-        reordered_identities = [None] * len(identities)
-        section = len(identities) // limit
+        n = len(identities)
+        reordered_identities = [None] * n
+        id_per_limit = n // limit
         for i, val in enumerate(identities):
-            subarr_i, pos = divmod(i, limit * 2)
-            new_i = subarr_i * 2 + (pos & 1) + section * (pos // 2)
+            subarr_i, pos = divmod(i, id_per_query)
+            new_i = id_per_limit * (pos // id_per_result) \
+                    + subarr_i * id_per_result \
+                    + pos % id_per_result
             reordered_identities[new_i] = val
         option_ids_reordered[key] = reordered_identities
-    return option_ids_reordered
     
+    if check:
+        for key in option_identities:
+            id1 = option_identities[key]
+            id2 = option_ids_reordered[key]
+            assert Counter(id1) == Counter(id2)
+    
+    return option_ids_reordered
     

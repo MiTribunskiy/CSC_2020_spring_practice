@@ -6,7 +6,8 @@ from urllib.request import urlopen
 
 import re
 from collections import defaultdict
-from tqdm.notebook import tqdm
+# from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 
 class SearchEngine(ABC):
@@ -49,14 +50,18 @@ class Google(SearchEngine):
     
     # business_entity_set = set(open('business_entities.txt').read().split('\n'))
     business_entity_set = {
-        'ltd', 'limited',
-        'inc', 'corp', 'corporation',
+        'ltd', 'limited', 'ltda', 'llc',
+        'inc', 'incorporated', 'corp', 'corporation',        
+        'gbr', 'gmbh', 'ag',
+        'a/s', 'as',
         'co', 'company'
     }
     
     # country_set = set(open('countries.txt').read().split('\n'))
     country_set = {
-        'uk', 'us', 'germany'
+        'uk', 'france', 'germany', 'spain', 'italy', 'ireland', 'poland', 'switzerland',
+        'us', 'latin', 'america', 'mexico', 'cuba', 'argentina',
+        'korea', 'japan'
     }
     
     conjunction_set = {
@@ -66,7 +71,7 @@ class Google(SearchEngine):
     @classmethod
     def _get_identity(cls, search_params, extended=False):
         url = cls.service_url + '?' + urlencode(search_params)
-        print(url)
+#         print(url)
         response = json.loads(urlopen(url).read())
         
         identity_list = []
@@ -96,7 +101,7 @@ class Google(SearchEngine):
         
         identities_dict = {}
         for q in tqdm(queries, total=len(queries)):
-            search_params['query'] = q.strip()
+            search_params['query'] = q.lower().strip()
             identity_list = cls._get_identity(search_params, extended=extended)
             identities_dict[q] = identity_list
         
@@ -111,7 +116,7 @@ class Google(SearchEngine):
         for q in tqdm(queries, total=len(queries)):
             # tokens = re.findall(r'[a-zA-Z0-9]+', q)
             # tokens = list(map(quote, q.split()))
-            tokens = q.split()
+            tokens = q.lower().split()
             for prefix_size in reversed(range(1, len(tokens) + 1)):
                 search_params['query'] = ' '.join(tokens[:prefix_size])
                 identity_list = cls._get_identity(search_params, extended=extended)
@@ -126,7 +131,7 @@ class Google(SearchEngine):
         
         identities_dict = defaultdict(list)
         for q in tqdm(queries, total=len(queries)):
-            tokens = q.split()
+            tokens = q.lower().split()
             prefix_imp = [0]
             for t_raw in tokens:
                 t = t_raw.strip('().')

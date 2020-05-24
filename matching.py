@@ -47,7 +47,7 @@ class Similarity:
         '''
         return round(SequenceMatcher(None, str0, str1).ratio() * 100)
 
-# rewrite with ENUM!
+# !ENUM!
 FUZZY = Similarity.fuzzy_match
 LCMS = Similarity.lcms_match
 
@@ -55,7 +55,7 @@ LCMS = Similarity.lcms_match
 class JunkProcessor:
     
     junk_list = {
-        'ltd', 'limited',
+        'ltd', 'limited', 'ltda', 'llc',
         'inc', 'corp', 'corporation',
         'co', 'company'
     }
