@@ -6,8 +6,8 @@ from search_engine import *
 from processed import *
 from visual import *
 
-parser = argparse.ArgumentParser()
 
+parser = argparse.ArgumentParser()
 
 # required arguments
 parser.add_argument("-d", "--data",
@@ -31,7 +31,6 @@ parser.add_argument("-o", "--output",
 parser.add_argument("-t", "--threshold",
                     type=int, default=80,
                     help="assign threshold value [0, 100] (80 by default)")
-
 
 # process command line arguments
 args = parser.parse_args()
@@ -66,15 +65,15 @@ for opt in options:
     key = opt.lower()
     if key not in processed_companies:
         new_keys.add(key)
-
-print(f'Searching identities for #{len(new_keys)} new companies from database:')
-new_opt_ids_raw = Google.get_subarray_identities(new_keys,
-                                                  extra_params={'limit':5, 'types': 'Organization'},
-                                                  extended=True)
-new_opt_ids = reorder_identities(new_opt_ids_raw,
-                                 limit=5,
-                                 extended=True)
-Processed.update_csv(new_opt_ids)
+if new_keys:
+    print(f'Searching identities for #{len(new_keys)} new companies from database:')
+    new_opt_ids = Google.get_subarray_identities(new_keys,
+                                                 extra_params={'limit':5, 'types': 'Organization'},
+                                                 extended=True, reorder=True)
+    Processed.update_csv(new_opt_ids)
+else:
+    print(f'All companies from database found in: "{Processed.filepath}"')
+    new_opt_ids = {}
 
 
 # assign identities to all companies from database
@@ -87,12 +86,9 @@ for opt in options:
         option_ids[opt] = new_opt_ids[key]
 
 
-# load queries
-queries = open(path_query).read().strip().split('\n')
-
-
 # search identities of the queries
-print(f'Searching identities for queries:')
+queries = open(path_query).read().strip().split('\n')
+print(f'Searching identities of the queries:')
 query_ids = Google.get_identities(queries, 
                                   extra_params={'types': 'Organization'})
 

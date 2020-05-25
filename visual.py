@@ -1,4 +1,3 @@
-from collections import defaultdict, Counter
 from matching import *
 
 
@@ -8,13 +7,6 @@ def template(*info):
 
 def print_results(queries, options, match_func=FUZZY, query_identities={}, option_identities={}, total_limit=5, use_limit=None,
                   threshold=80, show_extra=2, path_output=None):
-    avg_recall = 0
-    avg_prec = 0
-    
-    avg_recall_size_weight = 0
-    total_relevant = 0
-    avg_prec_size_weight = 0
-    total_output = 0
     
     key_order = ['option', 'score', 'identity']
     n = len(options)
@@ -64,33 +56,4 @@ def print_results(queries, options, match_func=FUZZY, query_identities={}, optio
     
     if ouf:
         ouf.close()
-    
-
-
-def reorder_identities(option_identities, limit=5, extended=False, check=False):
-    '''
-    identities sorted by the position in GKGS responses
-    '''
-    option_ids_reordered = {}
-    id_per_result = 1 if not extended else 2
-    id_per_query = id_per_result * limit
-    for key, identities in option_identities.items():
-        n = len(identities)
-        reordered_identities = [None] * n
-        id_per_limit = n // limit
-        for i, val in enumerate(identities):
-            subarr_i, pos = divmod(i, id_per_query)
-            new_i = id_per_limit * (pos // id_per_result) \
-                    + subarr_i * id_per_result \
-                    + pos % id_per_result
-            reordered_identities[new_i] = val
-        option_ids_reordered[key] = reordered_identities
-    
-    if check:
-        for key in option_identities:
-            id1 = option_identities[key]
-            id2 = option_ids_reordered[key]
-            assert Counter(id1) == Counter(id2)
-    
-    return option_ids_reordered
     

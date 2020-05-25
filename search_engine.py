@@ -5,7 +5,7 @@ from urllib.parse import urlencode, quote
 from urllib.request import urlopen
 
 import re
-from collections import defaultdict
+from collections import defaultdict, Counter
 # from tqdm.notebook import tqdm
 from tqdm import tqdm
 
@@ -48,7 +48,7 @@ class Google(SearchEngine):
         'key': api_key,
     }
     
-    # business_entity_set = set(open('business_entities.txt').read().split('\n'))
+#     business_entity_set = set(open('business_entities.txt').read().split('\n'))
     business_entity_set = {
         'ltd', 'limited', 'ltda', 'llc',
         'inc', 'incorporated', 'corp', 'corporation',        
@@ -57,7 +57,7 @@ class Google(SearchEngine):
         'co', 'company'
     }
     
-    # country_set = set(open('countries.txt').read().split('\n'))
+#     country_set = set(open('countries.txt').read().split('\n'))
     country_set = {
         'uk', 'france', 'germany', 'spain', 'italy', 'ireland', 'poland', 'switzerland',
         'us', 'latin', 'america', 'mexico', 'cuba', 'argentina',
@@ -77,7 +77,7 @@ class Google(SearchEngine):
         identity_list = []
         for element in response['itemListElement']:
             qid = element['result']['name']
-            # score = element['resultScore']
+#             score = element['resultScore']
             identity_list.append(qid)
             if extended:
                 try:
@@ -93,7 +93,28 @@ class Google(SearchEngine):
         identity_list.extend([''] * (limit - curr_len))
         
         return identity_list
-    
+
+    @classmethod
+    def _reorder_identities(cls, identities_dict, limit, extended=True, check=False):
+        '''
+        for each key sort its identities by the position in GKGS response
+        '''
+        id_per_result = 1 if not extended else 2
+        id_per_query = id_per_result * limit
+        for key, identities in identities_dict.items():
+            n = len(identities)
+            reordered_identities = [None] * n
+            id_per_limit = n // limit
+            for i, val in enumerate(identities):
+                subarr_i, pos = divmod(i, id_per_query)
+                new_i = id_per_limit * (pos // id_per_result) \
+                        + subarr_i * id_per_result \
+                        + pos % id_per_result
+                reordered_identities[new_i] = val
+            if check:
+                assert Counter(identities) == Counter(reordered_identities)        
+            identities_dict[key] = reordered_identities
+
     @classmethod
     def get_identities(cls, queries, extra_params={}, extended=False):
         search_params = dict(cls.default_search_params)
@@ -108,33 +129,37 @@ class Google(SearchEngine):
         return identities_dict
         
     @classmethod
-    def get_prefix_identities(cls, queries, extra_params={}, extended=False):
+    def get_prefix_identities(cls, queries, extra_params={}, extended=True, reorder=True):
         search_params = dict(cls.default_search_params)
         search_params.update(extra_params)
         
         identities_dict = defaultdict(list)
         for q in tqdm(queries, total=len(queries)):
-            # tokens = re.findall(r'[a-zA-Z0-9]+', q)
-            # tokens = list(map(quote, q.split()))
-            tokens = q.lower().split()
+#             tokens = re.findall(r'[a-zA-Z0-9]+', q)
+#             tokens = list(map(quote, q.split()))
+#             tokens = q.lower().split()
+            tokens = [t_raw.strip('().,') for t_raw in q.lower().split()]
             for prefix_size in reversed(range(1, len(tokens) + 1)):
                 search_params['query'] = ' '.join(tokens[:prefix_size])
                 identity_list = cls._get_identity(search_params, extended=extended)
                 identities_dict[q].extend(identity_list)
         
+        if reorder:
+            cls._reorder_identities(identities_dict, 
+                                    limit=search_params['limit'], extended=extended)
+        
         return identities_dict
     
     @classmethod
-    def get_subarray_identities(cls, queries, extra_params={}, extended=False):
+    def get_subarray_identities(cls, queries, extra_params={}, extended=True, reorder=True):
         search_params = dict(cls.default_search_params)
         search_params.update(extra_params)
         
         identities_dict = defaultdict(list)
         for q in tqdm(queries, total=len(queries)):
-            tokens = q.lower().split()
+            tokens = [t_raw.strip('().,') for t_raw in q.lower().split()]
             prefix_imp = [0]
-            for t_raw in tokens:
-                t = t_raw.strip('().')
+            for t in tokens:
                 if (t in cls.business_entity_set
                     or t in cls.country_set
                     or t in cls.conjunction_set):
@@ -153,4 +178,9 @@ class Google(SearchEngine):
                         identity_list = cls._get_identity(search_params, extended=extended)
                         identities_dict[q].extend(identity_list)
         
+        if reorder:
+            cls._reorder_identities(identities_dict, 
+                                    limit=search_params['limit'], extended=extended)
+        
         return identities_dict
+
