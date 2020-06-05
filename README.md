@@ -1,7 +1,7 @@
-## Fuzzy string matching of companies' names
+# Fuzzy string matching of companies' names
 
-#### About
-This application helps in finding legally associated companies.
+## About
+This application provides help in finding legally associated companies.
 
 Input:
 - company name, whose related companies we would like to find (query)
@@ -10,7 +10,7 @@ Input:
 Output:
 - list of potentially associated companies
 
-#### Prerequisites:
+## Prerequisites:
 
 - Unix shell
 - Python, version >=3.6
@@ -20,7 +20,7 @@ API key is required to get access to [**Google Knowledge Graph Search API**](htt
 To get your personal API key, visit: <https://developers.google.com/places/web-service/get-api-key>. Then save your API key in `data/.api_key` file.
 
 
-#### Setup:
+## Setup:
 
 To create virtual environment `.env_fuzzy` (with all necessary packages) and source it, run in Unix shell:
 
@@ -31,7 +31,7 @@ source setup.sh
 Once `.env_fuzzy` is created, the same command can be used to source this virtual environment.
 
 
-#### Making queries:
+## Making queries:
 
 To make queries, 2 files required:
 
@@ -67,7 +67,7 @@ python launcher.py -d <database>.csv -q <queries>.txt -i 2
 python launcher.py -d <database>.csv -q <queries>.txt -l "company name"
 ```
 
-If column name is specified, `--header` option can be omitted.
+If `--loc` option is specified, `--header` option can be omitted.
 
 
 To access help menu from command line, run `python launcher.py -h`:
