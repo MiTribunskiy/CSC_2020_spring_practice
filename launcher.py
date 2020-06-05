@@ -2,9 +2,9 @@ import argparse
 
 import pandas as pd
 
-from search_engine import *
-from processed import *
-from visual import *
+from tools.search_engine import *
+from tools.processed import *
+from tools.visual import *
 
 
 parser = argparse.ArgumentParser()

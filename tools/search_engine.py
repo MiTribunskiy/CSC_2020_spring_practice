@@ -41,14 +41,14 @@ class Google(SearchEngine):
     '''
     
     service_url = 'https://kgsearch.googleapis.com/v1/entities:search'
-    api_key = open('.api_key').read()
+    api_key = open('data/.api_key').read()
     default_search_params = {
         'limit': 1,
         'indent': True,
         'key': api_key,
     }
     
-#     business_entity_set = set(open('business_entities.txt').read().split('\n'))
+#     business_entity_set = set(open('data/business_entities.txt').read().split('\n'))
     business_entity_set = {
         'ltd', 'limited', 'ltda', 'llc',
         'inc', 'incorporated', 'corp', 'corporation',        
@@ -57,7 +57,7 @@ class Google(SearchEngine):
         'co', 'company'
     }
     
-#     country_set = set(open('countries.txt').read().split('\n'))
+#     country_set = set(open('data/countries.txt').read().split('\n'))
     country_set = {
         'uk', 'france', 'germany', 'spain', 'italy', 'ireland', 'poland', 'switzerland',
         'us', 'latin', 'america', 'mexico', 'cuba', 'argentina',

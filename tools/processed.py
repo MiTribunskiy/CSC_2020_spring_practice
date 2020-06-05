@@ -3,7 +3,7 @@ import csv
 
 class Processed:
     
-    filepath = 'processed_companies.csv'
+    filepath = 'data/processed_companies.csv'
     
     @classmethod
     def update_csv(cls, option_identities, filepath=None):
