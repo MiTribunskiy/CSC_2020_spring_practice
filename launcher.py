@@ -51,7 +51,7 @@ path_queries = args.file
 if not (queries or path_queries):
     parser.error('No query specified, add -q or -f argument')
 elif path_queries:
-    queries.extend(q for q in open(path_queries).readlines() if q)
+    queries.extend(q for q in map(str.strip, open(path_queries).readlines()) if q)
 
 path_output = args.output
 company_loc = args.loc
