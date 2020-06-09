@@ -9,42 +9,56 @@ from tools.visual import *
 
 parser = argparse.ArgumentParser()
 
-# required arguments
-parser.add_argument("-d", "--data",
+# required argument
+parser.add_argument("-d", "--database",
                     required=True,
-                    help="provide path to file with data")
+                    help="provide path to file with database")
+
+# at least one argument is required
 parser.add_argument("-q", "--query",
-                    required=True,
+                    metavar="QUERY", dest="queries", action="append", default=[],
+                    help="add search query")
+parser.add_argument("-f", "--file",
+                    metavar="QUERYFILE",
                     help="provide path to file with queries")
 
-# optional arguments
-parser.add_argument("--header",
+
+# optional mutually exclusive arguments
+exclusive = parser.add_mutually_exclusive_group()
+exclusive.add_argument("-i", "--iloc",
+                       help="provide number of column with company names")
+exclusive.add_argument("-l", "--loc",
+                       help="provide name of column with company names")
+
+# other optional arguments
+parser.add_argument("-e", "--header",
                     action="store_const", const=0,
                     help="if specified: first line in datafile is treated as header")
-parser.add_argument("-i", "--iloc",
-                    type=int, default=0,
-                    help="provide number of column with company names")
-parser.add_argument("-l", "--loc",
-                    help="provide name of column with company names")
 parser.add_argument("-o", "--output",
                     help="provide path to output file (stdout by default)")
 parser.add_argument("-t", "--threshold",
                     type=int, default=80,
                     help="assign threshold value [0, 100] (80 by default)")
+parser.add_argument("-s", "--showextra",
+                    type=int, default=5,
+                    help="assign how many extra companies whose score is less than threshold are shown (5 by default)")
 
 # process command line arguments
 args = parser.parse_args()
-path_db = args.data
-path_query = args.query
+path_db = args.database
+queries = args.queries
+path_queries = args.file
+if not (queries or path_queries):
+    parser.error('No query specified, add -q or -f argument')
+elif path_queries:
+    queries.extend(q for q in open(path_queries).readlines() if q)
+
 path_output = args.output
 company_loc = args.loc
 company_iloc = args.iloc
 header = 0 if company_loc else args.header
-threshold = args.threshold
-if threshold < 0:
-    threshold = 0
-elif threshold > 100:
-    threshold = 100
+threshold = min(max(args.threshold, 0), 100)
+show_extra = max(args.showextra, 0)
 
 
 # load identities of companies processed earlier 
@@ -55,8 +69,10 @@ processed_companies = Processed.load_csv()
 df = pd.read_csv(path_db, header=header)
 if company_loc:
     options = df[company_loc]
-else:
+elif company_iloc:
     options = df.iloc[:, company_iloc]
+else:
+    options = df.iloc[:, 0]
 
 
 # search identities of new companies from database
@@ -87,7 +103,6 @@ for opt in options:
 
 
 # search identities of the queries
-queries = open(path_query).read().strip().split('\n')
 print(f'Searching identities of the queries:')
 query_ids = Google.get_identities(queries, 
                                   extra_params={'types': 'Organization'})
@@ -102,5 +117,5 @@ print_results(queries=queries,
               use_limit=5,
               total_limit=5,
               threshold=threshold, 
-              show_extra=5, 
+              show_extra=show_extra, 
               path_output=path_output);
